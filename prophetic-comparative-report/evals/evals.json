@@ -1,0 +1,28 @@
+{
+  "skill_name": "prophetic-comparative-report",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Jämför Christine Westhoffs 'Reframing the Prophetic' och 'God's Voice Made Tangible', interview-transkriptet med henne, och mitt eget utkast 'Att pröva profetisk vägledning, del 1'. Nivå 3, engelska. Strukturen du känner till.",
+      "expected_output": "A .docx comparative report in English at Level 3, using the 11 canonical questions, with Agreement/Complementarity/Tension structure, IBM Plex Sans font, filename following the -comparative-report.docx convention with two author last names, quality flag at the end.",
+      "files": [
+        "westhoff-reframing.txt",
+        "westhoff-voice.txt",
+        "westhoff-interview.md",
+        "lars-draft.md"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Gör en jämförande rapport mellan Jack Deeres 'Surprised by the Voice of God' och Sam Storms 'Practicing the Power'. Nivå 2, svenska. Lägg till en fråga om hur författarna ser på kvinnor i det profetiska tjänstegavorna.",
+      "expected_output": "A .docx comparative report in Swedish at Level 2, with the 11 canonical questions plus one added question about women in prophetic ministry, filename ending -jamforande-rapport.docx, two-author naming, IBM Plex Sans, quality flag.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "Compare these three works on prophecy: Wayne Grudem's 'The Gift of Prophecy in the New Testament and Today', Michael Brown's 'Playing with Holy Fire', and my own draft chapter on testing prophecy. Level 4, English. Full verification pass.",
+      "expected_output": "A .docx comparative report in English at Level 4, with full SBL 2 apparatus, verification pass performed on all citations, three authors (Grudem, Brown, Gunther) in filename with -et-al- pattern if ordering demands it or without if only two last names are used, IBM Plex Sans, quality flag.",
+      "files": []
+    }
+  ]
+}
