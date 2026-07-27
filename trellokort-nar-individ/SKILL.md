@@ -133,4 +133,13 @@ Innan en URL skrivs in i mönsterbaserade fält (People For, Ministry Watch tag)
 
 - **Spellista YouTube, Instapaper, OneNote — aldrig automatisk ifyllnad.** Bara om Lars uttryckligen anger URL.
 - **Kort skapas aldrig utan bekräftelse.**
-- **Update-f
+- **Update-flödet rör aldrig icke-standard innehåll utan Lars instruktion** — vid mismatch, skriv ut förslag, ändra inget. Undantag: konverteringsläge när Lars uttryckligen pekar ut mappning (se uppdatera-flödet steg 2). Ingen force-flagga utöver det.
+- **Kortnamn ändras aldrig av update-flödet** (bevara sort-prefix och parentes).
+- **Bekräftelse innan varje `update_card`** med ny desc.
+- **Kommentarer postas aldrig utan Lars uttryckliga "kör" / "posta" / "ja".**
+
+## Verktyg
+
+Trello MCP: `get_lists`, `search` (med `board_ids`), `get_card`, `create_card`, `update_card`, `add_comment`, `add_label_to_card`, `get_board_labels`.
+
+Webb: `WebSearch` (Wikipedia, Ministry Watch-träffar, Roys Report-träffar, egen webbplats, NAR-connections-fallback), `web_fetch` (Prophecy Index-indexsidor, NAR-connections söksida, HTTP-checkar).
