@@ -1,0 +1,25 @@
+# sammanfatta-media — konfiguration
+# Kopiera denna fil till config.yml och fyll i dina värden.
+
+# Mapp där rapporter sparas (obligatorisk)
+output_dir: ~/Documents/sammanfatta-media/out
+
+# Mapp där transkriptioner sparas permanent (obligatorisk)
+transcripts_dir: ~/Documents/sammanfatta-media/transkriptioner
+
+# Inkorgsmapp för batch-URL:er — lämna tomt för att inaktivera
+inbox_dir: ""
+
+# Standardspråk för transkription (kommaseparerat, i prioritetsordning)
+default_lang: "en,sv"
+
+# Webbläsare för cookie-baserad bot-detection vid YouTube-spärrar
+# Alternativ: chrome, firefox, safari, edge, brave, chromium
+cookies_browser: "firefox"
+
+# Personlig kontext — påverkar kritisk analys på nivå 1 och 2.
+# Beskriv din bakgrund och relevanta ämnespreferenser.
+# Lämna tomt för neutralt perspektiv.
+user_context: |
+  Beskriv din bakgrund här.
+  Exempel: "Jag är pastor och teolog. Teologiska preferenser: kontinuationist, egalitär."

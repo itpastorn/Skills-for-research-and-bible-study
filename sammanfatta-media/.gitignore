@@ -1,0 +1,7 @@
+config.yml
+__pycache__/
+*.pyc
+*.pyo
+.DS_Store
+# Personliga engångsskript för specifika videor
+bygg_*_rapport.py
