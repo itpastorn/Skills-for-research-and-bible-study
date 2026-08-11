@@ -26,8 +26,13 @@ Mappningsfilens format — en lista av objekt:
     [
       {"fel": "Pchesca",       "ratt": "Prochaska"},
       {"fel": "Farnbeck",      "ratt": "Farnebäck"},
-      {"fel": "Brad Zadznney", "ratt": "Brandy Zadrozny", "osaker": true}
+      {"fel": "Brad Zadznney", "ratt": "Brandy Zadrozny", "osaker": true},
+      {"fel": "Revelations",   "ratt": "Revelation", "skiftlagesberoende": true}
     ]
+
+Flaggan skiftlagesberoende stänger av skiftlägesokänsligheten för en enskild
+post. Använd den för ord som bara är egennamn när de är versaliserade, så att
+"gnostic revelations" inte annoteras som bibelboken.
 
 Egenskaper:
     - Skiftlägesokänslig matchning (undertexter växlar ofta till VERSALER),
@@ -48,22 +53,30 @@ import sys
 from pathlib import Path
 
 GENITIV = r"(?:['’]s)?"
-# Undertextfiler radbryter mitt inne i namn och lämnar kvar &nbsp; från VTT-
-# källan. "Brandi\nZadrozny" och "Brandi&nbsp;Zadrozny" är samma namn som
-# "Brandi Zadrozny" och måste matcha likadant.
-AVSKILJARE = r"(?:\s|&nbsp;)+"
+# Undertextfiler radbryter mitt inne i namn, lämnar kvar &nbsp; från VTT-
+# källan och skjuter in tidsstämplar var och varannan sekund — mitt i namnet
+# om det vill sig illa. "Brandi\nZadrozny", "Brandi&nbsp;Zadrozny" och
+# "Allen (00:15:50) Dedio" är alla samma namn som "Allen Dedio" och måste
+# matcha likadant.
+AVSKILJARE = r"(?:\s|&nbsp;|\(\d{2}:\d{2}:\d{2}\))+"
 
 
-def _bygg_monster(fel: str) -> re.Pattern:
-    """Ordgränsat, skiftlägesokänsligt mönster med valfri engelsk genitiv.
+def _bygg_monster(fel: str, skiftlagesberoende: bool = False) -> re.Pattern:
+    """Ordgränsat mönster med valfri engelsk genitiv.
 
     Mellanslag i felstavningen matchar godtyckligt blanktecken, inklusive
-    radbrytning och &nbsp;, så att flerordsnamn hittas även när textningen
-    brutit dem över två rader."""
+    radbrytning, &nbsp; och inskjuten tidsstämpel, så att flerordsnamn hittas
+    även när textningen brutit dem mitt itu.
+
+    Matchningen är normalt skiftlägesokänslig, eftersom undertexter växlar
+    till VERSALER utan förvarning. Sätt skiftlagesberoende för ord som bara
+    är egennamn när de är versaliserade — "Revelations" är bibelboken,
+    "gnostic revelations" är ett vanligt substantiv."""
     delar = AVSKILJARE.join(re.escape(d) for d in fel.split())
+    flaggor = 0 if skiftlagesberoende else re.IGNORECASE
     return re.compile(
         r"(?<![^\W\d_])" + delar + GENITIV + r"(?![^\W\d_])",
-        re.IGNORECASE,
+        flaggor,
     )
 
 
@@ -77,7 +90,7 @@ def normalisera(text: str, mappning: list[dict]) -> tuple[str, dict[str, int]]:
         fel, ratt = post["fel"], post["ratt"]
         osaker = bool(post.get("osaker", False))
         etikett = f" [{ratt} ?]" if osaker else f" [{ratt}]"
-        monster = _bygg_monster(fel)
+        monster = _bygg_monster(fel, bool(post.get("skiftlagesberoende", False)))
         traffar = 0
 
         def ersatt(m: re.Match) -> str:
