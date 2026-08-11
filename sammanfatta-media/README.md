@@ -5,6 +5,7 @@ En Claude Code-skill som hämtar transkriptioner från YouTube och producerar st
 ## Funktioner
 
 - Hämtar undertexter automatiskt via yt-dlp (manuella och auto-genererade)
+- Normaliserar egennamn i transkriptionen — förvanskade namn får rätt stavning inom hakparentes (`Pchesca [Prochaska]`), så att arkivet blir sökbart
 - Stödjer enskild URL, flera URL:er och hela spellistor
 - Fyra diagnostiknivåer: ingen / enkel bedömning / kritisk analys / skarp kritik
 - Rapportformat: Word (.docx med IBM Plex Sans), Markdown, PDF
@@ -122,6 +123,7 @@ sammanfatta-media/
   SKILL.md                  ← Claude Code-skillsdefinition
   hamta_transkription.py    ← Hämtar VTT-undertexter via yt-dlp
   vtt_till_text.py          ← Konverterar VTT till ren text
+  normalisera_namn.py       ← Infogar rätt stavning av egennamn i transkriptionen
   bygg_rapport.py           ← Bygger .docx-rapporter
   main.py                   ← CLI-ingång för manuell körning
   config.yml.example        ← Konfigurationsmall

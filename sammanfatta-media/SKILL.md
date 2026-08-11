@@ -32,6 +32,10 @@ python "{SKILL_DIR}/hamta_transkription.py" <URL> \
     --output "{TRANSCRIPTS_DIR}/sammanfatta-<videoid>.txt" \
     --lang <default_lang>
 
+# Normalisera egennamn i transkriptionen (Steg 2b — obligatoriskt)
+python "{SKILL_DIR}/normalisera_namn.py" "{TRANSCRIPTS_DIR}/sammanfatta-<videoid>.txt" \
+    --mappning "{TEMP_DIR}/namnmappning-<videoid>.json"
+
 # Bygg docx-rapport
 python "{SKILL_DIR}/bygg_rapport.py" <output_path>
 ```
@@ -79,7 +83,7 @@ Skriptet försöker i tur och ordning:
 2. Auto-genererade undertexter (språk enligt `default_lang`)
 3. Om bot-detection: automatiskt omförsök med `--cookies-from-browser <cookies_browser>`
 
-Vid framgång: gå direkt till Steg 3 (sammanfattning). Metadata sparas parallellt i `.meta.json`.
+Vid framgång: gå till Steg 2b (namnnormalisering) och därefter Steg 3 (sammanfattning). Metadata sparas parallellt i `.meta.json`.
 
 Transkriptionen och dess `.meta.json` sparas permanent i `transcripts_dir`. De ligger kvar efter körningen och kan återanvändas.
 
@@ -167,6 +171,60 @@ Följ Form A → B → C ovan.
 
 **Vid saknad transkription**: säg det tydligt. Gör ingen fullständig analys som om transkriptionen funnits. Fortsätt med metadata och beskrivning om möjligt.
 
+### Steg 2b — Namnnormalisering (OBLIGATORISKT efter varje hämtning)
+
+Undertexter förvanskar regelmässigt egennamn — *Pchesca* för Prochaska, *Farnbeck* för Farnebäck, *Zaprruder* för Zapruder. Transkriptionerna sparas permanent och ska gå att söka i långt senare, men den som söker på det rätta namnet hittar aldrig den förvanskade formen. Därför infogas rätt stavning inom hakparentes direkt efter felstavningen:
+
+```
+Pchesca [Prochaska]
+```
+
+Vid osäker identifiering — rimlig gissning utifrån sammanhanget, men inte säkerställd — läggs frågetecken till:
+
+```
+Pchesca [Prochaska ?]
+```
+
+**Felstavningen står kvar orörd.** Originalet skrivs aldrig om, och ingenting markeras med `[sic]`. Hakparentesen är ett tillägg, inte en rättelse.
+
+**Omfattning — allt som är egennamn:**
+
+- personer (talare, forskare, författare, omnämnda)
+- organisationer, företag, myndigheter, samfund, kanaler och plattformar
+- geografiska namn — städer, länder, regioner, byggnader, institutioner
+- bibelböcker och bibliska namn (personer, folk, platser)
+- verk — boktitlar, filmer, poddar, artiklar, album
+- märkesnamn, produkter, tekniska begrepp med egennamnskaraktär
+
+Vanliga substantiv normaliseras inte. Rena hörfel utan egennamnskaraktär (*helped built*, *sensemaking* felstavat) lämnas orörda.
+
+**Arbetsgång:**
+
+1. Läs igenom hela transkriptionen och notera varje förvanskat egennamn.
+2. Identifiera rätt form utifrån sammanhang, videobeskrivning, metadata och egen sakkunskap. Sök på nätet när det behövs och är möjligt.
+3. Bygg en mappningsfil i JSON i temp-katalogen — **inte** i `transcripts_dir`:
+
+```json
+[
+  {"fel": "Pchesca",       "ratt": "Prochaska"},
+  {"fel": "Farnbeck",      "ratt": "Farnebäck"},
+  {"fel": "Brad Zadznney", "ratt": "Brandy Zadrozny", "osaker": true}
+]
+```
+
+4. Kör `normalisera_namn.py` mot den sparade transkriptionen. Skriptet skriver över filen i `transcripts_dir` — det är den arkiverade, sökbara versionen som ska bära annoteringarna.
+5. Kontrollera utskriften. Skriptet redovisar antal infogningar per post och varnar för poster utan träff. En post utan träff betyder oftast felstavad sökterm i mappningen eller att en längre post redan konsumerat förekomsten.
+
+**Skriptets egenskaper:** skiftlägesokänslig matchning med bevarat originalskiftläge (undertexter växlar ofta till VERSALER), längsta felstavningen först, engelsk genitiv hanterad, och idempotent — en omkörning bygger inte på fler hakparenteser.
+
+**Osäkerhetsbedömning.** Sätt `"osaker": true` när identifieringen är en rimlig men obekräftad slutledning. Var frikostig med frågetecknet: ett felaktigt tvärsäkert namn i arkivet är värre än ett ärligt frågetecken. Markeringen ska stämma överens med källstatusen *sannolik identifiering* i källistan.
+
+**Vid flera videor:** en mappningsfil per video. Samma person kan förvanskas olika i olika textningar.
+
+**Gäller alla inmatningsformer.** Även transkript som klistrats in manuellt (Form C) normaliseras innan de sparas eller citeras.
+
+**Nedströms:** sammanfattning, källista och rapportens transkriptionssektion bygger alla på den normaliserade texten. Citerar du transkriptionen ordagrant i löptext kan hakparentesen utelämnas när rätt namn redan framgår av sammanhanget — men i rapportens fullständiga transkriptionssektion ska den alltid stå kvar.
+
 ### Steg 3 — Producera sammanfattning
 
 Standardformat:
@@ -205,7 +263,7 @@ Default-struktur:
 2. **Sammanfattning** (från Steg 3)
 3. **Kritisk bedömning** (om diagnostik begärdes)
 4. **Källor** — alltid videoförankrade; Claudes egna källor endast vid diagnostik
-5. **Transkription** — alltid med som sista sektion, med rubrik "Transkription" och källa angiven
+5. **Transkription** — alltid med som sista sektion, med rubrik "Transkription" och källa angiven. Använd den namnnormaliserade versionen från Steg 2b, och nämn i ingressen att hakparenteserna är tillagda rätta stavningar av egennamn medan övriga hörfel är bevarade
 
 **Rapportbygge (docx):** Anropa `bygg_rapport.py` med en strukturerad dict.
 
@@ -258,8 +316,8 @@ Användaren ser den städade versionen direkt — aldrig ett utkast.
 
 ## Källidentifiering
 
-Samla källor löpande under transkriptionsgenomgången. Identifiera:
-- **Forskare och verk** — även förvanskat uttal. Ange sannolik identifiering vid osäkerhet.
+Samla källor löpande under transkriptionsgenomgången. Namnnormaliseringen i Steg 2b och källidentifieringen gör i praktiken samma arbete — gör dem i ett svep och låt mappningsfilen och källistan stämma överens. Identifiera:
+- **Forskare och verk** — även förvanskat uttal. Ange sannolik identifiering vid osäkerhet; den statusen ska motsvara `"osaker": true` i namnmappningen.
 - **Primärkällor** — bibelställen, apokryfer, pseudepigrafer, kyrkofäder, rabbinsk litteratur
 - **Webbplatser och poddar**
 
@@ -296,7 +354,7 @@ Om `inbox_dir` är angivet i config.yml och användaren ber om det: läs `.txt`-
 ## Påminnelser
 
 - Anpassa expertisen efter videons ämne — inte bara teologi.
-- Bevara transkriptionsfel som de är — markera inte med [sic].
+- Bevara transkriptionsfel som de är — skriv aldrig om originaltexten och markera aldrig med [sic]. Enda undantaget är hakparenteserna med rätt stavning av egennamn enligt Steg 2b, som läggs till utan att felstavningen rörs.
 - Filnamn: `[a-z0-9-]+\.docx` (eller motsv.). Inga diakritiska tecken, inga understreck.
 - IBM Plex Sans i alla Word-dokument om användaren inte säger annat.
 - Kör `pip install -U yt-dlp` vid behov — YouTube-API:t ändras ofta.

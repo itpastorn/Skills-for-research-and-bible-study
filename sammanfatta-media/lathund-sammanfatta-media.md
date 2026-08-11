@@ -99,6 +99,10 @@ Claude försöker i ordning:
 
 - **Metadata** hämtas alltid (titel, kanal, datum, kapitel, videobeskrivning)
 - **Transkription sparas** permanent i `transcripts_dir` (config.yml) — återanvänds vid behov
+- **Namnnormalisering** körs alltid direkt efter hämtningen: förvanskade egennamn får rätt stavning inom hakparentes, så att arkivet går att söka i. Felstavningen står kvar orörd.
+  - Säker identifiering: `Pchesca [Prochaska]`
+  - Osäker gissning: `Pchesca [Prochaska ?]`
+  - Gäller personer, organisationer, orter, länder, bibelböcker, verk — allt som är egennamn
 - **Transkription bifogas** alltid som sista sektion i rapporter
 - **Källidentifiering** — forskare, bibelreferenser, poddar identifieras och märks med status (*explicit nämnd*, *sannolik identifiering*, etc.)
 - **Språklig genomgång** körs automatiskt före rapportleverans (du ser den städade versionen direkt)
