@@ -73,39 +73,45 @@ def _bygg_monster(fel: str, skiftlagesberoende: bool = False) -> re.Pattern:
     är egennamn när de är versaliserade — "Revelations" är bibelboken,
     "gnostic revelations" är ett vanligt substantiv."""
     delar = AVSKILJARE.join(re.escape(d) for d in fel.split())
-    flaggor = 0 if skiftlagesberoende else re.IGNORECASE
-    return re.compile(
-        r"(?<![^\W\d_])" + delar + GENITIV + r"(?![^\W\d_])",
-        flaggor,
-    )
+    kropp = r"(?<![^\W\d_])" + delar + GENITIV + r"(?![^\W\d_])"
+    # Inline-flagga i stället för compile-flagga, så att grenar med olika
+    # skiftlägeskrav kan sättas ihop till ett enda mönster.
+    return kropp if skiftlagesberoende else f"(?i:{kropp})"
+
+
+def _etikett(post: dict) -> str:
+    return f" [{post['ratt']} ?]" if post.get("osaker") else f" [{post['ratt']}]"
 
 
 def normalisera(text: str, mappning: list[dict]) -> tuple[str, dict[str, int]]:
-    """Infoga hakparenteser med rätt stavning. Returnerar (text, antal per post)."""
-    # Längsta felstavningen först — annars äter en kort post upp en längre.
+    """Infoga hakparenteser med rätt stavning. Returnerar (text, antal per post).
+
+    Alla poster matchas i ett enda svep med en alternation ordnad längsta
+    felstavningen först. Att i stället köra en post i taget vore fel: en kort
+    post matchar då inuti det en längre redan har annoterat, så att
+    "Chris Valatin [Kris Vallotton]" blir
+    "Chris [Kris Vallotton] Valatin [Kris Vallotton]". Med ett svep kan
+    varje position bara konsumeras en gång, och den längsta grenen vinner."""
     poster = sorted(mappning, key=lambda p: len(p["fel"]), reverse=True)
-    antal: dict[str, int] = {}
+    antal: dict[str, int] = {p["fel"]: 0 for p in poster}
 
-    for post in poster:
-        fel, ratt = post["fel"], post["ratt"]
-        osaker = bool(post.get("osaker", False))
-        etikett = f" [{ratt} ?]" if osaker else f" [{ratt}]"
-        monster = _bygg_monster(fel, bool(post.get("skiftlagesberoende", False)))
-        traffar = 0
+    grenar = [
+        f"(?P<p{i}>{_bygg_monster(p['fel'], bool(p.get('skiftlagesberoende', False)))})"
+        for i, p in enumerate(poster)
+    ]
+    monster = re.compile("|".join(grenar))
 
-        def ersatt(m: re.Match) -> str:
-            nonlocal traffar
-            # Redan annoterad? Lämna orörd.
-            svans = text[m.end():m.end() + len(etikett) + 4]
-            if re.match(r"\s*\[", svans):
-                return m.group(0)
-            traffar += 1
-            return m.group(0) + etikett
+    def ersatt(m: re.Match) -> str:
+        post = poster[int(m.lastgroup[1:])]
+        etikett = _etikett(post)
+        # Redan annoterad? Lämna orörd, så att en omkörning inte staplar
+        # hakparenteser.
+        if re.match(r"\s*\[", text[m.end():m.end() + len(etikett) + 4]):
+            return m.group(0)
+        antal[post["fel"]] += 1
+        return m.group(0) + etikett
 
-        text = monster.sub(ersatt, text)
-        antal[fel] = traffar
-
-    return text, antal
+    return monster.sub(ersatt, text), antal
 
 
 def main() -> int:

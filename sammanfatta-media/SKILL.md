@@ -219,6 +219,8 @@ Vanliga substantiv normaliseras inte. Rena hörfel utan egennamnskaraktär (*hel
 
 **Skriptets egenskaper:** skiftlägesokänslig matchning med bevarat originalskiftläge (undertexter växlar ofta till VERSALER), längsta felstavningen först, engelsk genitiv hanterad, och idempotent — en omkörning bygger inte på fler hakparenteser. Mellanslag i en post matchar godtyckligt blanktecken, inklusive radbrytning, `&nbsp;` och inskjuten tidsstämpel, eftersom textningen bryter namn mitt itu: `Allen (00:15:50) Dedio` är samma namn som `Allen Dedio`.
 
+**Fullnamn och kortform i samma mappning är säkert.** Alla poster matchas i ett enda svep, längsta grenen vinner, så `Chris Valatin` och `Chris` kan båda stå med. Den långa konsumerar sina förekomster och den korta annoterar bara de fristående. Ta med båda när textningen växlar mellan formerna — annars blir de lösa förnamnen osökbara.
+
 **Skiftlägeskänsliga poster.** Sätt `"skiftlagesberoende": true` för ord som bara är egennamn när de är versaliserade. Utan flaggan annoteras *gnostic revelations* som bibelboken. Samma problem gäller ord som *Word*, *Way*, *Rock* och *Church*.
 
 **Annotera inte enbart versalfel.** Sökning är normalt skiftlägesokänslig, så *xp media* hittas redan av den som söker *XP Media*. Hakparenteser ska reserveras för poster där bokstäverna är fel — annars dränks de verkliga rättelserna i brus.
