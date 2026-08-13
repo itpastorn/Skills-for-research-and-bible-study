@@ -90,7 +90,7 @@ Claude försöker i ordning:
 
 1. **yt-dlp manuella undertexter** (bäst kvalitet)
 2. **yt-dlp auto-genererade undertexter** (språk enligt `default_lang` i config.yml)
-3. **Whisper-fallback** — hämtar audio och transkriberar lokalt (tar tid, byggs vid behov)
+3. **Whisper-fallback** — hämtar ljudet och transkriberar lokalt. Tar tid: ungefär fyra minuter per kvart ljud med `base.en` på CPU. Larmar om transkriptionen slutar för tidigt i förhållande till ljudlängden.
 4. **Manuell inklistring** — Claude ber dig öppna YouTube → `...mer` → `Visa transkription`
 
 ---

@@ -11,7 +11,7 @@ En Claude Code-skill som hämtar transkriptioner från YouTube och producerar st
 - Rapportformat: Word (.docx med IBM Plex Sans), Markdown, PDF
 - Källidentifiering med statusmärkning
 - Obligatorisk språklig genomgång före rapportleverans
-- Fallback till Whisper-transkribering när undertexter saknas (kräver `whisper_fallback.py`)
+- Fallback till Whisper-transkribering när undertexter saknas helt (`whisper_fallback.py`, kräver `openai-whisper` och ffmpeg)
 
 ## Krav
 

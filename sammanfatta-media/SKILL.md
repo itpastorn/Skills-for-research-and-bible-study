@@ -91,16 +91,23 @@ Transkriptionen och dess `.meta.json` sparas permanent i `transcripts_dir`. De l
 
 ### Form B — Whisper-fallback
 
-Om Form A misslyckas (inga captions, geo-block, åldersgräns):
+Om Form A misslyckas (inga captions, geo-block, åldersgräns). Kör mot `transcripts_dir`, inte temp — utdata är en arkivpost som alla andra:
 
 ```bash
 python "{SKILL_DIR}/whisper_fallback.py" <URL> \
-    --output "{TEMP_DIR}/sammanfatta-<videoid>.txt"
+    --output "{TRANSCRIPTS_DIR}/sammanfatta-<videoid>.txt" \
+    --modell base.en
 ```
 
-Skriptet hämtar audio med yt-dlp och transkriberar med faster-whisper. Meddela användaren att det tar tid (5–10 min/timme på CPU). För svenska: använd KBLab-modellen (`KBLab/kb-whisper-large`).
+Skriptet hämtar ljudet med yt-dlp och transkriberar med `openai-whisper`. Utdata får samma `(hh:mm:ss)`-format som Form A, så namnnormalisering och rapportbygge fungerar oförändrat.
 
-**OBS:** `whisper_fallback.py` är ännu inte implementerad — byggs när behovet uppstår.
+**Modellval:** `base.en` för tydligt engelskt tal (standard, ungefär fyra minuter per kvart ljud på CPU). `small` för brus, brytning och många egennamn — cirka tre gånger långsammare. För svenska krävs faster-whisper och KBLab-modellen (`KBLab/kb-whisper-large`), se `reference_swedish_whisper.md`.
+
+**Meddela användaren att det tar tid** och kör i bakgrunden vid flera videor. Undvik att pipa körningen genom `tail` — då buffras förloppsutskriften och det går inte att följa arbetet.
+
+**Tyst avkortning.** Whisper har observerats avsluta i förtid utan felmeddelande, i ett fall vid 80 procent av ljudet. Skriptet jämför sista tidsstämpeln med ljudets faktiska längd och larmar vid mer än 15 sekunders differens. **Kontrollera alltid det larmet** — vid utslag är transkriptionen ofullständig och resten måste köras separat med ffmpeg-trim och tidsförskjutning.
+
+**Bonus värd att känna till:** Whisper stavar egennamn betydligt bättre än YouTubes auto-textning. I en körning över tolv videor behövde Whisper-transkriptionerna noll namnrättelser medan de auto-textade behövde 55. Steg 2b behövs ändå, men blir oftast tomt för Form B.
 
 ### Form C — Manuell inklistring
 
