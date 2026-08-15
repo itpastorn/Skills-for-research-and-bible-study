@@ -82,6 +82,14 @@ Skriptet försöker i tur och ordning:
 1. Manuella undertexter (bäst kvalitet — fackord och namn)
 2. Auto-genererade undertexter (språk enligt `default_lang`)
 3. Om bot-detection: automatiskt omförsök med `--cookies-from-browser <cookies_browser>`
+4. Vid 429, n-challenge eller formatfel: omförsök med android-klienten
+5. Om ett språk fällde hela hämtningen: omförsök **ett språk i taget**
+
+**Originalspåret går alltid före översättningar.** YouTube lägger videons faktiska talspråk under `<lang>-orig` och publicerar samtidigt maskinöversättningar under vanliga koder. Skriptet frågar efter båda och prioriterar **alla `-orig`-spår först**, därefter de vanliga — inte parvis per språk. Med `default_lang: "en,sv"` blir ordningen `en-orig, sv-orig, en, sv`. För en svensk video innebär det att `sv-orig` väljs framför den engelska maskinöversättningen, trots att engelska står först i önskelistan.
+
+**Varför det spelar roll:** utan detta hämtas svenskt material antingen inte alls, eller som engelsk översättning av svenskt tal — vilket är oanvändbart för citat och förstör namnnormaliseringen. Källetiketten i utskriften visar vilken väg som användes: `auto`, `auto+cookies`, `auto+android`, `auto+enskilt` eller `auto+enskilt+android`.
+
+**429-fällan.** yt-dlp avbryter *hela* undertexthämtningen när ett enda begärt språk faller. Ett 429 på det första spåret gör alltså att ett fullt fungerande spår längre ner i listan aldrig hämtas — och det slår hårdast mot icke-engelskt material, där översättningen ofta ligger först och originalet sist. Därav steg 5.
 
 Vid framgång: gå till Steg 2b (namnnormalisering) och därefter Steg 3 (sammanfattning). Metadata sparas parallellt i `.meta.json`.
 

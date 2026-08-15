@@ -35,6 +35,48 @@ def get_video_id(url: str) -> str | None:
 ANDROID_CLIENT = ['--extractor-args', 'youtube:player_client=android']
 
 
+def _kodprioritet(langs: list[str]) -> list[str]:
+    """Språkkoder i den ordning de ska föredras.
+
+    ALLA originalspår först, därefter de vanliga — inte parvis per språk.
+    Skälet: <lang>-orig är videons faktiska talspråk, medan ett blott <lang>
+    mycket väl kan vara en maskinöversättning. För en svensk video med
+    default_lang "en,sv" är `en` en översättning och `sv-orig` originalet, och
+    då ska originalet vinna trots att engelska står först i önskelistan.
+
+    ['en', 'sv'] -> ['en-orig', 'sv-orig', 'en', 'sv']
+    """
+    orig = [lang if lang.endswith('-orig') else f'{lang}-orig' for lang in langs]
+    vanliga = [lang for lang in langs if not lang.endswith('-orig')]
+    ut: list[str] = []
+    for kod in orig + vanliga:
+        if kod not in ut:
+            ut.append(kod)
+    return ut
+
+
+def _valj_vtt(out_dir: str, pattern: str, langs: list[str]) -> Path | None:
+    """Välj den bästa nedladdade VTT-filen. Returnerar None om inget finns."""
+    vtt_files = list(Path(out_dir).glob(pattern))
+    if not vtt_files:
+        return None
+    for kod in _kodprioritet(langs):
+        traff = [f for f in vtt_files if f.stem.endswith(f'.{kod}')]
+        if traff:
+            return traff[0]
+    return vtt_files[0]
+
+
+def _lonar_omforsok_per_sprak(stderr: str) -> bool:
+    """Tyder felet på att ETT språk fällde hela hämtningen?
+
+    yt-dlp avbryter alla undertexter när ett begärt språk misslyckas, så det är
+    värt att gå igenom koderna en och en."""
+    return ('Unable to download video subtitles' in stderr
+            or 'HTTP Error 429' in stderr
+            or '429' in stderr)
+
+
 def _needs_android_fallback(stderr: str) -> bool:
     return ('429' in stderr
             or 'Requested format is not available' in stderr
@@ -72,13 +114,14 @@ def fetch_captions(url: str, out_dir: str, langs: list[str]) -> tuple[Path | Non
     Källa är 'manual' eller 'auto'.
     """
     vid = get_video_id(url)
-    lang_str = ','.join(langs)
+    # YouTube lägger videons faktiska talspråk under <lang>-orig och kan samtidigt
+    # publicera ett maskinöversatt <lang>. Fråga efter båda — annars missas svenskt
+    # material helt, eftersom --sub-langs matchar exakta koder.
+    koder = _kodprioritet(langs)
+    pattern = f'yt-{vid}*.vtt' if vid else 'yt-*.vtt'
 
-    for write_flag, source_label in [
-        ('--write-subs', 'manual'),
-        ('--write-auto-subs', 'auto'),
-    ]:
-        cmd = [
+    def bygg(write_flag: str, lang_str: str) -> list[str]:
+        return [
             'yt-dlp', '--ignore-config', '--skip-download', write_flag,
             '--sub-langs', lang_str,
             '--sub-format', 'vtt',
@@ -86,42 +129,53 @@ def fetch_captions(url: str, out_dir: str, langs: list[str]) -> tuple[Path | Non
             '--no-warnings', '--no-playlist',
             url,
         ]
+
+    for write_flag, source_label in [
+        ('--write-subs', 'manual'),
+        ('--write-auto-subs', 'auto'),
+    ]:
+        # Snabbvägen: begär alla koder i ett anrop.
+        cmd = bygg(write_flag, ','.join(koder))
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
 
-        # Kolla om vi fick VTT-filer
-        pattern = f'yt-{vid}*.vtt' if vid else 'yt-*.vtt'
-        vtt_files = list(Path(out_dir).glob(pattern))
-        if vtt_files:
-            # Välj rätt språkprioritet om flera
-            for lang in langs:
-                preferred = [f for f in vtt_files if f.stem.endswith(f'.{lang}')]
-                if preferred:
-                    return preferred[0], source_label
-            return vtt_files[0], source_label
+        vald = _valj_vtt(out_dir, pattern, langs)
+        if vald:
+            return vald, source_label
 
         # Bot-detection: försök med cookies om vi fick 403 eller "Sign in"
         if 'Sign in' in result.stderr or '403' in result.stderr:
-            cmd_cookies = cmd + ['--cookies-from-browser', 'firefox']
-            result2 = subprocess.run(cmd_cookies, capture_output=True, text=True, timeout=120)
-            vtt_files = list(Path(out_dir).glob(pattern))
-            if vtt_files:
-                for lang in langs:
-                    preferred = [f for f in vtt_files if f.stem.endswith(f'.{lang}')]
-                    if preferred:
-                        return preferred[0], f'{source_label}+cookies'
-                return vtt_files[0], f'{source_label}+cookies'
+            subprocess.run(cmd + ['--cookies-from-browser', 'firefox'],
+                           capture_output=True, text=True, timeout=120)
+            vald = _valj_vtt(out_dir, pattern, langs)
+            if vald:
+                return vald, f'{source_label}+cookies'
 
         # 429/n-challenge/format-fel: försök med android-klienten
         if _needs_android_fallback(result.stderr):
-            result3 = subprocess.run(cmd + ANDROID_CLIENT,
-                                     capture_output=True, text=True, timeout=120)
-            vtt_files = list(Path(out_dir).glob(pattern))
-            if vtt_files:
-                for lang in langs:
-                    preferred = [f for f in vtt_files if f.stem.endswith(f'.{lang}')]
-                    if preferred:
-                        return preferred[0], f'{source_label}+android'
-                return vtt_files[0], f'{source_label}+android'
+            subprocess.run(cmd + ANDROID_CLIENT,
+                           capture_output=True, text=True, timeout=120)
+            vald = _valj_vtt(out_dir, pattern, langs)
+            if vald:
+                return vald, f'{source_label}+android'
+
+        # Ett språk i taget. yt-dlp avbryter hela undertexthämtningen när ETT
+        # begärt språk faller — ett 429 på det första spåret gör alltså att ett
+        # fullt fungerande spår längre ner i listan aldrig hämtas. Det slår hårdast
+        # mot icke-engelskt material, där en engelsk översättning ofta ligger först
+        # och originalspåret sist.
+        if _lonar_omforsok_per_sprak(result.stderr):
+            for kod in koder:
+                ensam = subprocess.run(bygg(write_flag, kod),
+                                       capture_output=True, text=True, timeout=120)
+                vald = _valj_vtt(out_dir, pattern, langs)
+                if vald:
+                    return vald, f'{source_label}+enskilt'
+                if _needs_android_fallback(ensam.stderr):
+                    subprocess.run(bygg(write_flag, kod) + ANDROID_CLIENT,
+                                   capture_output=True, text=True, timeout=120)
+                    vald = _valj_vtt(out_dir, pattern, langs)
+                    if vald:
+                        return vald, f'{source_label}+enskilt+android'
 
     return None, None
 
