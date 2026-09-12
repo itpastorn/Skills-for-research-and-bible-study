@@ -1,11 +1,11 @@
 ---
 name: sammanfatta-media
-description: Sammanfattar YouTube-videor (och i framtiden andra mediakällor). Stödjer chatt-svar och filrapporter (docx/md/pdf) med valbar diagnostik på nivå 0–3. Aktiveras av "/sammanfatta-media <URL>" eller naturligspråkliga formuleringar som "sammanfatta denna video", "ge mig en rapport om denna video", "djävulens advokat på den här". Klarar enskild URL, flera URL:er och spellistor.
+description: Sammanfattar YouTube-videor och Substack-inlägg med video eller podd (och i framtiden andra mediakällor). Stödjer chatt-svar och filrapporter (docx/md/pdf) med valbar diagnostik på nivå 0–3. Aktiveras av "/sammanfatta-media <URL>" eller naturligspråkliga formuleringar som "sammanfatta denna video", "ge mig en rapport om denna video", "djävulens advokat på den här". Klarar enskild URL, flera URL:er och spellistor.
 ---
 
 # sammanfatta-media
 
-Återanvändbart arbetsflöde för att sammanfatta YouTube-videor (och framtida mediakällor). Stödjer två leveranslägen, tre inmatningsformer och fyra diagnostiknivåer.
+Återanvändbart arbetsflöde för att sammanfatta YouTube-videor, Substack-inlägg med video eller podd (och framtida mediakällor). Stödjer två leveranslägen, tre inmatningsformer och fyra diagnostiknivåer.
 
 ## Konfiguration och sökvägar
 
@@ -28,6 +28,8 @@ Standardkommandon:
 
 ```bash
 # Hämta transkription — sparas permanent i transcripts_dir
+# Samma kommando för YouTube och Substack; skriptet väljer väg efter adressen.
+# Substack: använd sammanfatta-substack-<slug>.txt, där <slug> är sista ledet i URL:en.
 python "{SKILL_DIR}/hamta_transkription.py" <URL> \
     --output "{TRANSCRIPTS_DIR}/sammanfatta-<videoid>.txt" \
     --lang <default_lang>
@@ -97,6 +99,44 @@ Transkriptionen och dess `.meta.json` sparas permanent i `transcripts_dir`. De l
 
 **Bot-detection-varning:** Om yt-dlp rapporterar "Sign in to confirm" körs cookies-läget automatiskt. Misslyckas det också: gå till Form C.
 
+### Form A för Substack — Substacks egen transkription
+
+Substack transkriberar själv uppladdade videor och poddavsnitt. yt-dlp når inte den transkriptionen, men den ligger öppet i inläggets API-post. `hamta_transkription.py` känner igen Substack-adresser och hämtar den via `substack.py` — **samma kommando som för YouTube, ingen webbläsare behövs**.
+
+**Adressformer som känns igen:**
+
+- `https://<publikation>.substack.com/p/<slug>`
+- `https://open.substack.com/pub/<publikation>/p/<slug>` (delningslänkar)
+- `https://substack.com/home/post/p-<id>` och `https://substack.com/@<namn>/p-<id>`
+- egen domän med `/p/<slug>` — bekräftas mot API-svaret, så att t.ex. Medium inte tas för Substack
+
+**Vad som hämtas:** API:t (`/api/v1/posts/<slug>`) ger signerade CDN-adresser till en VTT-fil per språk och till en JSON-fil med ordnivådata. VTT används i första hand, med originalspråket före översättningar — samma princip som `-orig` hos YouTube. JSON-filen är reserv. Metadata (titel, bylines, datum, längd, ingress) hämtas ur samma post. Källetiketten blir `substack-vtt` eller `substack-json`.
+
+**Talaretiketter.** Till skillnad från YouTubes textning är Substacks diariserad. Etiketten skrivs vid varje talarbyte:
+
+```
+(00:00:01) SPEAKER_00: Välkomna ska ni vara till Teologiska tankar.
+(00:00:04) Ett ganska spontant förmiddagssamtal mellan mig och Joel.
+(00:00:41) SPEAKER_02: Väldigt kongenialt på något sätt …
+```
+
+Etiketten står bara vid byte, inte på varje rad, så att `normalisera_namn.py` fortfarande kan matcha namn som delats över två rader hos samma talare.
+
+- **Koppla etiketter till namn utifrån innehållet**: vem som hälsar välkommen, vem som tilltalas, självbiografiska detaljer. Skriv kopplingen som `speaker_names` i `.meta.json` och ange den i rapportens transkriptionsingress. **Skriv aldrig om etiketterna i själva transkriptionen** — samma princip som för felstavningar.
+- **Diariseringen är inte felfri. Kontrollera talaren mot innehållet innan en replik citeras.** Första körningen (Halldorf–Schüldt, 56 min) gav en tredje ”talare” som bara bestod av 15 felattribuerade fragment om 65 ord vid överlappande tal, och flera korta inslag mitt i den andres tur hade fel etikett — bland annat en replik om uppväxten i Pingstkyrkan i Linköping som hamnade hos fel person. Korta inslag kan också vara verkliga inpass; det avgör bara innehållet.
+
+**Utfall och nästa steg:**
+
+| Exit | Betydelse | Gör så här |
+|---|---|---|
+| 0 | Transkription sparad | Gå till Steg 2b |
+| 3 | Inlägget har video/ljud men ingen åtkomlig transkription (ej genererad, eller bakom betalvägg) | Webbläsarreserven nedan, annars Form B — yt-dlp har en Substack-extraktor, så `whisper_fallback.py` fungerar. Svenska kräver KBLab-modellen. |
+| 4 | Rent textinlägg utan media | Ingen transkription finns. Läs artikeln (webbläsarens sidtext) och sammanfatta den; spara ingenting i `transcripts_dir`. |
+
+**Webbläsarreserv (när API:t inte räcker).** Öppna inlägget i webbläsaren — Claude in Chrome om det kräver inloggning, annars den inbyggda. Klicka på knappen med texten **Transcript**; då öppnas en behållare med hela texten. Läs den med `document.querySelector('[class*="transcription-full-body-container"]').innerText`. **Matcha på klassnamnets början**: det avslutande ledet (`-LXFSNv`) är en bygghash som skiftar mellan Substacks versioner. Texten består av tidsstämplar i formen `m:ss` eller `h:mm:ss` på egen rad, följda av ett stycke — gör om till `(hh:mm:ss) text` och spara i `transcripts_dir`. Den här vägen **saknar talaretiketter**; föredra därför API-vägen när den fungerar.
+
+**Namnkvalitet.** Substacks transkription är av Whisper-typ och stavar i regel namn bättre än YouTubes autotextning, men svenska samtal behöver ändå Steg 2b — den första körningen gav 26 rättelser (*Timmy Barrett* för T.B. Barratt, *Vagers av Pontus* för Evagrios Pontikos, *pingkyrkan* för Pingstkyrkan).
+
 ### Form B — Whisper-fallback
 
 Om Form A misslyckas (inga captions, geo-block, åldersgräns). Kör mot `transcripts_dir`, inte temp — utdata är en arkivpost som alla andra:
@@ -158,6 +198,7 @@ Samla för varje video:
 - videobeskrivning och dess inbäddade länkar
 - kapitel/timestamps (om tillgängliga)
 - spellisteposition (om relevant)
+- för Substack: bylines (i `uploader`), inläggets underrubrik (i `description`) och talarkopplingen (`speaker_names`, se Form A för Substack)
 
 **Visuell separation:** Skilj alltid videobeskrivning, transkription och Claudes sammanfattning med egna H2/H3-rubriker. Blanda dem aldrig i samma stycke. Citat ur videobeskrivningen: blockquote eller indenterat citat.
 
@@ -286,7 +327,7 @@ Default-struktur:
 2. **Sammanfattning** (från Steg 3)
 3. **Kritisk bedömning** (om diagnostik begärdes)
 4. **Källor** — alltid videoförankrade; Claudes egna källor endast vid diagnostik
-5. **Transkription** — alltid med som sista sektion, med rubrik "Transkription" och källa angiven. Använd den namnnormaliserade versionen från Steg 2b, och nämn i ingressen att hakparenteserna är tillagda rätta stavningar av egennamn medan övriga hörfel är bevarade
+5. **Transkription** — alltid med som sista sektion, med rubrik "Transkription" och källa angiven. Använd den namnnormaliserade versionen från Steg 2b, och nämn i ingressen att hakparenteserna är tillagda rätta stavningar av egennamn medan övriga hörfel är bevarade. Har transkriptionen talaretiketter (Substack), ange i ingressen vilken etikett som är vem och att enstaka repliker kan vara felattribuerade
 
 **Rapportbygge (docx):** Anropa `bygg_rapport.py` med en strukturerad dict.
 

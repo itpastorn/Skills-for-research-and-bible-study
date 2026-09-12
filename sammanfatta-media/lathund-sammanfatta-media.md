@@ -1,6 +1,7 @@
 # Lathund: sammanfatta-media
 
-Skill i Claude Code för att sammanfatta YouTube-videor (och framtida mediakällor).
+Skill i Claude Code för att sammanfatta YouTube-videor och Substack-inlägg med video eller podd (och framtida mediakällor).
+Substack-länkar fungerar precis som YouTube-länkar — transkriptionen hämtas direkt, med talaretiketter.
 Uppdaterad: 2026-05-13.
 
 ---

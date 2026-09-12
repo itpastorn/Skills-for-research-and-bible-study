@@ -1,10 +1,11 @@
 # sammanfatta-media
 
-En Claude Code-skill som hämtar transkriptioner från YouTube och producerar strukturerade sammanfattningar — som chattsvar eller sparade rapporter (Word, Markdown, PDF).
+En Claude Code-skill som hämtar transkriptioner från YouTube och Substack och producerar strukturerade sammanfattningar — som chattsvar eller sparade rapporter (Word, Markdown, PDF).
 
 ## Funktioner
 
 - Hämtar undertexter automatiskt via yt-dlp (manuella och auto-genererade)
+- Hämtar Substacks egen transkription för inlägg med video eller podd, direkt ur det öppna post-API:t — med talaretiketter (`substack.py`, inga extra beroenden)
 - Normaliserar egennamn i transkriptionen — förvanskade namn får rätt stavning inom hakparentes (`Pchesca [Prochaska]`), så att arkivet blir sökbart
 - Stödjer enskild URL, flera URL:er och hela spellistor
 - Fyra diagnostiknivåer: ingen / enkel bedömning / kritisk analys / skarp kritik
@@ -121,7 +122,8 @@ Skillen räknar videorna och frågar om det är fler än 5.
 ```
 sammanfatta-media/
   SKILL.md                  ← Claude Code-skillsdefinition
-  hamta_transkription.py    ← Hämtar VTT-undertexter via yt-dlp
+  hamta_transkription.py    ← Hämtar VTT-undertexter via yt-dlp, eller från Substack
+  substack.py               ← Substacks transkription via post-API:t, med talaretiketter
   vtt_till_text.py          ← Konverterar VTT till ren text
   normalisera_namn.py       ← Infogar rätt stavning av egennamn i transkriptionen
   bygg_rapport.py           ← Bygger .docx-rapporter

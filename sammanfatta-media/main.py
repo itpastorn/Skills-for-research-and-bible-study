@@ -42,6 +42,7 @@ DEFAULT_OUT = Path(_cfg.get("output_dir", "")).expanduser() if _cfg.get("output_
 sys.path.insert(0, str(SCRIPTS_DIR))
 from hamta_transkription import get_metadata, fetch_captions
 from vtt_till_text import convert_vtt
+import substack
 
 import json
 import tempfile
@@ -61,6 +62,24 @@ def slugify(text: str, max_len: int = 60) -> str:
 def hamta_och_spara(url: str, out_dir: Path, langs: list[str]) -> Path | None:
     """Hämta transkription för en URL och spara till out_dir. Returnerar textfilen."""
     print(f"\n→ Hämtar: {url}")
+
+    # Substack — egen transkription med talaretiketter, ingen yt-dlp
+    text, meta = substack.hamta(url, langs)
+    if meta is not None:
+        if text is None:
+            if meta.get('media') is None:
+                print("  NO_MEDIA: Substack-inlägget är ren text utan video eller ljud.", file=sys.stderr)
+            else:
+                print("  NO_CAPTIONS: Substack-inlägget saknar åtkomlig transkription.", file=sys.stderr)
+                print("  Kör whisper_fallback.py eller läs ur webbläsaren enligt SKILL.md.", file=sys.stderr)
+            return None
+        out_path = out_dir / f"transkript-{slugify(meta.get('title') or 'utan-titel')}.txt"
+        out_dir.mkdir(parents=True, exist_ok=True)
+        out_path.write_text(text, encoding='utf-8')
+        out_path.with_suffix('.meta.json').write_text(
+            json.dumps(meta, indent=2, ensure_ascii=False), encoding='utf-8')
+        print(f"  ✓ Sparad: {out_path} ({meta['caption_source']}, {len(text):,} tecken)")
+        return out_path
 
     meta = get_metadata(url)
     if meta is None:

@@ -1,15 +1,18 @@
 #!/usr/bin/env python3
 """
-Hämta transkription från YouTube via yt-dlp.
+Hämta transkription från YouTube via yt-dlp, eller från Substack.
 
-Försöker i tur och ordning:
+Substack-inlägg (video och podd) känns igen på adressen och hämtas direkt ur
+Substacks egen transkription — se substack.py. Övriga adresser går till yt-dlp,
+som försöker i tur och ordning:
   1. Manuella undertexter (bäst kvalitet på namn och fackord)
   2. Auto-genererade undertexter
 
 Returnerar exit-kod:
   0  — OK, transkription sparad till --output
   2  — Metadata-fel (dålig URL eller nätverk)
-  3  — Inga captions hittades (kör whisper-fallback.py)
+  3  — Inga captions hittades (kör whisper_fallback.py)
+  4  — Substack-inlägget är ren text utan media (läs artikeln)
 """
 
 import argparse
@@ -22,6 +25,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 from vtt_till_text import convert_vtt
+import substack
 
 
 def get_video_id(url: str) -> str | None:
@@ -182,7 +186,7 @@ def fetch_captions(url: str, out_dir: str, langs: list[str]) -> tuple[Path | Non
 
 def main():
     p = argparse.ArgumentParser(description=__doc__)
-    p.add_argument('url', help='YouTube-URL')
+    p.add_argument('url', help='YouTube- eller Substack-URL')
     p.add_argument('--output', required=True, help='Sökväg till output-textfil')
     p.add_argument('--lang', default='en,sv', help='Språkprioritet, kommaseparerad')
     args = p.parse_args()
@@ -190,6 +194,27 @@ def main():
     out_path = Path(args.output)
     out_path.parent.mkdir(parents=True, exist_ok=True)
     langs = [l.strip() for l in args.lang.split(',')]
+
+    # Substack — egen transkription med talaretiketter, ingen yt-dlp
+    text, meta = substack.hamta(args.url, langs)
+    if meta is not None:
+        if text is None:
+            if meta.get('media') is None:
+                print('NO_MEDIA: Substack-inlägget är en ren text utan video eller ljud — '
+                      'läs artikeln i stället.', file=sys.stderr)
+                sys.exit(4)
+            print('NO_CAPTIONS: Substack-inlägget saknar åtkomlig transkription '
+                  f'(audience: {meta.get("audience")}). Kör whisper_fallback.py — '
+                  'yt-dlp har en Substack-extraktor — eller läs transkriptionen '
+                  'ur webbläsaren enligt SKILL.md.', file=sys.stderr)
+            sys.exit(3)
+        out_path.write_text(text, encoding='utf-8')
+        out_path.with_suffix('.meta.json').write_text(
+            json.dumps(meta, indent=2, ensure_ascii=False), encoding='utf-8')
+        talare = ', '.join(meta.get('speakers') or []) or 'inga'
+        print(f'OK: {out_path} ({meta["caption_source"]}, {meta.get("caption_language") or "?"}, '
+              f'talare: {talare}, {len(text)} tecken)')
+        return
 
     # Steg 1 — metadata
     meta = get_metadata(args.url)
