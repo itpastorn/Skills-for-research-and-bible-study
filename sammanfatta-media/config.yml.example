@@ -10,6 +10,11 @@ transcripts_dir: ~/Documents/sammanfatta-media/transkriptioner
 # Inkorgsmapp för batch-URL:er — lämna tomt för att inaktivera
 inbox_dir: ""
 
+# Arbetsminne (Markdown) med egna beslut: var rapporter sorteras in,
+# konventioner, pågående arbete. Läses i början av varje körning.
+# Lämna tomt om du inte vill använda det.
+memory_file: ""
+
 # Standardspråk för transkription (kommaseparerat, i prioritetsordning)
 default_lang: "en,sv"
 

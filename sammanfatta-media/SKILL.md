@@ -13,6 +13,8 @@ Läs `~/.claude/skills/sammanfatta-media/config.yml` i början av varje körning
 
 Om filen saknas: be användaren kopiera `config.yml.example` till `config.yml` och fylla i sina sökvägar.
 
+**Arbetsminne.** Om `memory_file` är angivet i config.yml: läs filen i början av körningen. Den beskriver hur just den här användaren arbetar — var färdiga rapporter sorteras in, konventioner, filer utanför `output_dir` som skillen uppdaterar, och vad som väntar. Den går före standardbeteendet i den här filen där de skiljer sig. Uppdatera den (datum, avsnitt, logg) när användaren fattar ett beslut som ska gälla framåt; skriv aldrig in engångsdetaljer.
+
 Skriptmapp och kataloger — konstruera plattformsoberoende via Python:
 
 ```python
