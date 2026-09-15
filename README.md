@@ -9,6 +9,7 @@ Claude/Cowork-skills för bibelforskning, jämförande studier av profetia/urski
 - **prep-work-inside-file** — Skriver ut startinstruktioner för att arbeta direkt inuti Excel-filerna (tidsaxeln/personfilen) med Claude i Excel, till skillnad från vanlig Cowork-kontext.
 - **prophetic-comparative-report** — Producerar jämförande rapporter mellan 2–5 verk (böcker, artiklar, uppsatser, egna utkast) om det profetiska och urskillning.
 - **trellokort-nar-individ** — Skapar, uppdaterar och kommenterar kort i listan "Enskilda individer" på Trello-tavlan "NAR, Revival Alliance och trumpprofetism".
+- **watchers-table-review** — Slår upp, uppdaterar och utökar en rankningstabell (xlsx) över granskare och urskillningskanaler: kvalitetspoäng 1–5, kommentar och teologisk utgångspunkt. Sökvägen till tabellen måste anpassas.
 
 ## Relaterat
 
