@@ -23,6 +23,7 @@ Anrop från hamta_transkription.py och main.py:
 
 from __future__ import annotations
 
+import html
 import json
 import re
 import sys
@@ -203,7 +204,7 @@ def vtt_till_text(vtt: str) -> tuple[str, list[str]]:
         if not rad or tid is None or rad == 'WEBVTT' or re.fullmatch(r'\d+', rad):
             continue
         t = TALARE.search(rad)
-        text = re.sub(r'<[^>]+>', '', rad).strip()
+        text = html.unescape(re.sub(r'<[^>]+>', '', rad)).replace(' ', ' ').strip()
         if text:
             poster.append((tid, t.group(1).strip() if t else None, text))
             tid = None

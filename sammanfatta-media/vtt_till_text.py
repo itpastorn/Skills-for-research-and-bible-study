@@ -1,10 +1,20 @@
 #!/usr/bin/env python3
 """Konvertera VTT-undertext till ren text med tidsstämplar."""
+import html
 import re
 import sys
 from pathlib import Path
 
 TIMESTAMP_RE = re.compile(r'(\d{2}:\d{2}:\d{2}\.\d{3}) --> ')
+
+
+def avkoda(text: str) -> str:
+    """HTML-entiteter till tecken: &gt;&gt; blir >>, &nbsp; blir vanligt mellanslag.
+
+    Undertexter levereras HTML-kodade. Utan detta hamnar &amp;gt; och &amp;nbsp; i den
+    arkiverade transkriptionen och stör både läsning och sökning.
+    """
+    return html.unescape(text).replace(' ', ' ')
 
 
 def convert_vtt(vtt_path: str | Path) -> str:
@@ -31,7 +41,7 @@ def convert_vtt(vtt_path: str | Path) -> str:
             current_ts = ts_full[:8]  # hh:mm:ss
             continue
         # Rensa HTML-taggar (<c>, <i>, etc.)
-        text = re.sub(r'<[^>]+>', '', line).strip()
+        text = avkoda(re.sub(r'<[^>]+>', '', line)).strip()
         if not text or text in seen_texts:
             continue
         seen_texts.add(text)
